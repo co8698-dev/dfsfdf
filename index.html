@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>알록달록 보건실 스마트 타이머</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Noto Sans KR & Orbitron) -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;800;900&family=Orbitron:wght@700;900&display=swap">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Noto Sans KR', 'sans-serif'],
+                        digital: ['Orbitron', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* Screen Flashing Animation on Timer Completion */
+        @keyframes flash-red {
+            0%, 100% { background-color: #fecdd3; border-color: #f43f5e; }
+            50% { background-color: #fee2e2; border-color: #ef4444; }
+        }
+        .screen-flash {
+            animation: flash-red 0.6s infinite;
+        }
+
+        /* Pulse glow for running timer */
+        @keyframes subtle-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        .pulse-timer {
+            animation: subtle-pulse 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body id="main-body" class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col items-center justify-center p-4 transition-colors duration-500">
+
+    <!-- Container Card -->
+    <div id="app-card" class="w-full max-w-xl bg-white rounded-3xl shadow-2xl border-4 border-slate-200 p-6 sm:p-8 flex flex-col items-center gap-6 relative overflow-hidden transition-all duration-300">
+        
+        <!-- Header Title Badge -->
+        <header class="flex items-center justify-between w-full border-b-2 border-slate-100 pb-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-rose-500 text-white p-3 rounded-2xl shadow-md flex items-center justify-center">
+                    <i class="fa-solid fa-kit-medical text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">보건실 알록달록 타이머</h1>
+                    <p class="text-xs sm:text-sm text-slate-500 font-medium">원클릭 시간 추가 & 정밀 1초 조절</p>
+                </div>
+            </div>
+            <span class="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1.5 rounded-full border border-amber-200 flex items-center gap-1">
+                <i class="fa-solid fa-clock"></i> 최대 60분
+            </span>
+        </header>
+
+        <!-- Digital Timer Display Box -->
+        <div class="w-full bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-6 shadow-inner border-4 border-slate-700 flex flex-col items-center justify-center relative">
+            
+            <!-- Status Badge -->
+            <div id="status-badge" class="px-4 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider mb-2 bg-slate-700 text-slate-300 border border-slate-600">
+                대기 중
+            </div>
+
+            <!-- Main Time Output -->
+            <div id="timer-display" class="font-digital text-6xl sm:text-7xl font-extrabold text-emerald-400 tracking-widest my-2 drop-shadow-[0_0_15px_rgba(52,211,153,0.4)]">
+                00:00
+            </div>
+
+            <!-- Fine Adjustment Buttons (+1s, -1s) -->
+            <div class="flex items-center gap-4 mt-2">
+                <button onclick="adjustTime(-1)" class="bg-amber-500 hover:bg-amber-600 active:scale-90 text-white font-black px-4 py-2 rounded-xl shadow-lg border-b-4 border-amber-700 text-sm flex items-center gap-1 transition-all">
+                    <i class="fa-solid fa-minus"></i> 1초
+                </button>
+                <span class="text-xs text-slate-400 font-semibold">1초 단위 세기</span>
+                <button onclick="adjustTime(1)" class="bg-teal-500 hover:bg-teal-600 active:scale-90 text-white font-black px-4 py-2 rounded-xl shadow-lg border-b-4 border-teal-700 text-sm flex items-center gap-1 transition-all">
+                    <i class="fa-solid fa-plus"></i> 1초
+                </button>
+            </div>
+        </div>
+
+        <!-- Incremental Preset Time Buttons (1분, 5분, 10분) -->
+        <div class="w-full flex flex-col gap-2">
+            <label class="text-xs font-bold text-slate-500 flex items-center gap-1">
+                <i class="fa-solid fa-square-plus text-indigo-500"></i> 시간 누적 추가 (최대 60분)
+            </label>
+            <div class="grid grid-cols-3 gap-3">
+                <!-- +1 Min Button -->
+                <button onclick="addMinutes(1)" class="bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-500 hover:to-emerald-600 active:scale-95 text-white font-black py-3.5 px-2 rounded-2xl shadow-md border-b-4 border-emerald-700 text-base sm:text-lg flex flex-col items-center justify-center transition-all">
+                    <span>+ 1분</span>
+                    <span class="text-[10px] font-normal opacity-90">체온/간단 처치</span>
+                </button>
+
+                <!-- +5 Min Button -->
+                <button onclick="addMinutes(5)" class="bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-500 hover:to-blue-600 active:scale-95 text-white font-black py-3.5 px-2 rounded-2xl shadow-md border-b-4 border-blue-700 text-base sm:text-lg flex flex-col items-center justify-center transition-all">
+                    <span>+ 5분</span>
+                    <span class="text-[10px] font-normal opacity-90">지혈/안정</span>
+                </button>
+
+                <!-- +10 Min Button -->
+                <button onclick="addMinutes(10)" class="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 active:scale-95 text-white font-black py-3.5 px-2 rounded-2xl shadow-md border-b-4 border-indigo-800 text-base sm:text-lg flex flex-col items-center justify-center transition-all">
+                    <span>+ 10분</span>
+                    <span class="text-[10px] font-normal opacity-90">침상 휴식</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Control Buttons (Start/Stop, Reset) -->
+        <div class="w-full grid grid-cols-2 gap-4 pt-2">
+            <!-- Start / Stop Button -->
+            <button id="btn-start" onclick="toggleTimer()" class="bg-gradient-to-r from-lime-500 to-emerald-600 hover:from-lime-600 hover:to-emerald-700 active:scale-95 text-white font-black py-4 px-6 rounded-2xl shadow-lg border-b-4 border-emerald-800 text-xl flex items-center justify-center gap-2 transition-all">
+                <i id="btn-start-icon" class="fa-solid fa-play"></i>
+                <span id="btn-start-text">Start</span>
+            </button>
+
+            <!-- Reset Button -->
+            <button id="btn-reset" onclick="resetTimer()" class="bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 active:scale-95 text-white font-black py-4 px-6 rounded-2xl shadow-lg border-b-4 border-rose-800 text-xl flex items-center justify-center gap-2 transition-all">
+                <i class="fa-solid fa-rotate-right"></i>
+                <span>Reset</span>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Time's Up Screen Modal -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 sm:p-8 text-center transform transition-all border-8 border-rose-500 animate-bounce">
+            
+            <div class="w-20 h-20 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl shadow-inner">
+                <i class="fa-solid fa-bell-concierge"></i>
+            </div>
+
+            <h2 class="text-3xl font-black text-rose-600 mb-2 tracking-tight">시간 종료!</h2>
+            <p class="text-sm text-slate-600 font-bold mb-6">설정한 타이머 시간이 모두 지났습니다.<br>학생 상태를 확인해 주세요!</p>
+
+            <button onclick="dismissAlarm()" class="w-full bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 active:scale-95 text-white font-black py-4 px-6 rounded-2xl shadow-lg border-b-4 border-rose-800 text-lg transition-all">
+                알람 끄기 & 확인
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- Timer State variables ---
+        let totalSeconds = 0;
+        let timerInterval = null;
+        let isRunning = false;
+
+        const MAX_SECONDS = 3600; // 60 minutes limit
+        const timerDisplay = document.getElementById('timer-display');
+        const statusBadge = document.getElementById('status-badge');
+        const btnStart = document.getElementById('btn-start');
+        const btnStartIcon = document.getElementById('btn-start-icon');
+        const btnStartText = document.getElementById('btn-start-text');
+        const appCard = document.getElementById('app-card');
+        const modalBackdrop = document.getElementById('modal-backdrop');
+
+        // Web Audio Context for Beep Sound
+        let audioCtx = null;
+        let alarmInterval = null;
+
+        // --- Render Timer ---
+        function renderDisplay() {
+            const mins = Math.floor(totalSeconds / 60);
+            const secs = totalSeconds % 60;
+            const formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            
+            timerDisplay.textContent = formatted;
+            document.title = isRunning ? `(${formatted}) 타이머 작동 중` : '알록달록 보건실 타이머';
+        }
+
+        // --- Add Incremental Minutes (+1m, +5m, +10m) ---
+        function addMinutes(mins) {
+            const addedSecs = mins * 60;
+            if (totalSeconds + addedSecs > MAX_SECONDS) {
+                totalSeconds = MAX_SECONDS; // Cap at 60 minutes
+            } else {
+                totalSeconds += addedSecs;
+            }
+            renderDisplay();
+        }
+
+        // --- Fine Adjustment (+1s, -1s) ---
+        function adjustTime(secs) {
+            if (totalSeconds + secs < 0) {
+                totalSeconds = 0;
+            } else if (totalSeconds + secs > MAX_SECONDS) {
+                totalSeconds = MAX_SECONDS;
+            } else {
+                totalSeconds += secs;
+            }
+            renderDisplay();
+        }
+
+        // --- Toggle Start / Stop ---
+        function toggleTimer() {
+            if (totalSeconds <= 0) return;
+
+            if (isRunning) {
+                // STOP (Pause) State
+                clearInterval(timerInterval);
+                isRunning = false;
+                
+                statusBadge.textContent = "일시정지 중";
+                statusBadge.className = "px-4 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider mb-2 bg-amber-500 text-white border border-amber-600";
+                
+                btnStartText.textContent = "Start";
+                btnStartIcon.className = "fa-solid fa-play";
+                btnStart.className = "bg-gradient-to-r from-lime-500 to-emerald-600 hover:from-lime-600 hover:to-emerald-700 active:scale-95 text-white font-black py-4 px-6 rounded-2xl shadow-lg border-b-4 border-emerald-800 text-xl flex items-center justify-center gap-2 transition-all";
+                appCard.classList.remove('pulse-timer');
+            } else {
+                // START State
+                isRunning = true;
+                
+                statusBadge.textContent = "타이머 진행 중";
+                statusBadge.className = "px-4 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider mb-2 bg-emerald-500 text-white border border-emerald-600 animate-pulse";
+
+                btnStartText.textContent = "Stop";
+                btnStartIcon.className = "fa-solid fa-pause";
+                btnStart.className = "bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 active:scale-95 text-white font-black py-4 px-6 rounded-2xl shadow-lg border-b-4 border-rose-800 text-xl flex items-center justify-center gap-2 transition-all";
+                appCard.classList.add('pulse-timer');
+
+                // Initialize Audio Context on user gesture
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+
+                timerInterval = setInterval(() => {
+                    totalSeconds--;
+                    renderDisplay();
+
+                    if (totalSeconds <= 0) {
+                        clearInterval(timerInterval);
+                        isRunning = false;
+                        triggerTimesUp();
+                    }
+                }, 1000);
+            }
+        }
+
+        // --- Reset Timer ---
+        function resetTimer() {
+            clearInterval(timerInterval);
+            clearInterval(alarmInterval);
+            isRunning = false;
+            totalSeconds = 0;
+            
+            renderDisplay();
+            dismissAlarm();
+
+            statusBadge.textContent = "대기 중";
+            statusBadge.className = "px-4 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider mb-2 bg-slate-700 text-slate-300 border border-slate-600";
+
+            btnStartText.textContent = "Start";
+            btnStartIcon.className = "fa-solid fa-play";
+            btnStart.className = "bg-gradient-to-r from-lime-500 to-emerald-600 hover:from-lime-600 hover:to-emerald-700 active:scale-95 text-white font-black py-4 px-6 rounded-2xl shadow-lg border-b-4 border-emerald-800 text-xl flex items-center justify-center gap-2 transition-all";
+            appCard.classList.remove('pulse-timer');
+        }
+
+        // --- Play Sound Alert ---
+        function playBeepSound() {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(880, now); // A5 note
+                osc.frequency.exponentialRampToValueAtTime(1760, now + 0.3); // A6 note
+
+                gain.gain.setValueAtTime(0.5, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.35);
+            } catch (e) {
+                console.log("Audio play unsupported or blocked", e);
+            }
+        }
+
+        // --- Trigger Completion Screen & Animation ---
+        function triggerTimesUp() {
+            // Screen Flash Animation
+            document.getElementById('main-body').classList.add('screen-flash');
+            appCard.classList.remove('pulse-timer');
+
+            // Show Modal
+            modalBackdrop.classList.remove('hidden');
+
+            // Repeat Sound Alarm
+            playBeepSound();
+            alarmInterval = setInterval(playBeepSound, 800);
+
+            // Reset Start Button
+            btnStartText.textContent = "Start";
+            btnStartIcon.className = "fa-solid fa-play";
+            btnStart.className = "bg-gradient-to-r from-lime-500 to-emerald-600 hover:from-lime-600 hover:to-emerald-700 active:scale-95 text-white font-black py-4 px-6 rounded-2xl shadow-lg border-b-4 border-emerald-800 text-xl flex items-center justify-center gap-2 transition-all";
+            statusBadge.textContent = "시간 종료!";
+            statusBadge.className = "px-4 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider mb-2 bg-rose-600 text-white border border-rose-700 animate-bounce";
+        }
+
+        // --- Dismiss Alarm ---
+        function dismissAlarm() {
+            document.getElementById('main-body').classList.remove('screen-flash');
+            modalBackdrop.classList.add('hidden');
+            if (alarmInterval) clearInterval(alarmInterval);
+        }
+
+        // Initial render
+        renderDisplay();
+    </script>
+</body>
+</html>
